@@ -1,5 +1,5 @@
 # frontend/Containerfile
-FROM registry.access.redhat.com/ubi10/nginx-126:10.0
+FROM registry.access.redhat.com/ubi10/nginx-126:latest
 
 # Copy your HTML/JS files
 COPY . /opt/app-root/src/

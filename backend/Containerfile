@@ -1,5 +1,5 @@
 # Stage 1: Build the Go binary
-FROM registry.access.redhat.com/ubi10/go-toolset:10.0 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:latest AS builder
 
 # Use the standard non-root directory provided by UBI images
 WORKDIR /opt/app-root/src
@@ -15,7 +15,7 @@ COPY --chown=1001:0 . .
 RUN go build -o guestbook-api main.go
 
 # Stage 2: Final minimal image
-FROM registry.access.redhat.com/ubi10-minimal:10.0
+FROM registry.access.redhat.com/ubi10-minimal:latest
 WORKDIR /app
 
 # Copy the binary from the builder

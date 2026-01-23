@@ -7,4 +7,4 @@ spec:
     kind: Service
     name: guestbook-frontend-service  # Must match frontend service name exactly
   port:
-    targetPort: 8080                  # The port frontend app is listening on
+    targetPort: 8081                  # The port frontend app is listening on

@@ -18,7 +18,7 @@ spec:
       - name: guestbook-backend
         image: quay.io/shaheeramudasar/guestbook-backend:latest
         ports:
-        - containerPort: 5000
+        - containerPort: 8080
     env:
       - name: DB_HOST
         value: "postgres" # Using postgres service name so that it can find that service

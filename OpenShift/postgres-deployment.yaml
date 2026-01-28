@@ -19,18 +19,18 @@ spec:
         ports:
         - containerPort: 5432
         env:
-        # - name: DB_HOST
-        #   value: "localhost"
-        - name: POSTGRES_USER 
-          value: "guestbook"
-        - name: POSTGRES_PASSWORD
-          value: "password"
-        - name: POSTGRES_DB
-          value: "guestbook"
-        volumeMounts:
-        - name: pgdata
-          mountPath: /var/lib/pgsql/data
-      volumes:
-      - name: pgdata
-        persistentVolumeClaim:
-          claimName: pgdata-claim
+          - name: POSTGRES_USER
+            valueFrom:
+              configMapKeyRef:
+                name: postgres-config
+                key: POSTGRES_USER
+          - name: POSTGRES_DATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: postgres-config
+                key: POSTGRES_DATABASE
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-password
+                key: POSTGRES_PASSWORD

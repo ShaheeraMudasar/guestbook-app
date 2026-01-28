@@ -19,7 +19,7 @@ spec:
         image: quay.io/shaheeramudasar/guestbook-backend:latest
         ports:
         - containerPort: 8080
-      env:
+        env:
         - name: DB_HOST
           value: "postgres"        # Make sure this matches your Service name!
         - name: DB_USER

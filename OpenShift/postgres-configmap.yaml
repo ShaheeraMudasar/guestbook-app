@@ -5,3 +5,4 @@ metadata:
 data:
   POSTGRES_USER: guestbookuser
   POSTGRES_DATABASE: guestbookdatabase
+  POSTGRES_PORT: "5432"

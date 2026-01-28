@@ -18,9 +18,4 @@ spec:
         image: quay.io/fedora/redis-7:latest
         ports:
         - containerPort: 6379
-        env:
-          - name: REDIS_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: redis-password
-                key: REDIS_PASSWORD
+  

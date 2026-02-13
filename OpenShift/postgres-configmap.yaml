@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postgres-config
-data:
-  POSTGRESQL_USER: guestbookuser
-  POSTGRESQL_DATABASE: guestbookdatabase
-  POSTGRESQL_PORT: "5432"

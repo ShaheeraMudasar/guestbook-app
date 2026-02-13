@@ -63,3 +63,5 @@ jobs:
         git add k8s/frontend-deployment.yaml
         git commit -m "Update image to ${{ steps.image-tag.outputs.tag }}"
         git push origin main
+
+        # another comment to check the functionality of pipeline

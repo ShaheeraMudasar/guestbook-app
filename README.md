@@ -1,16 +1,86 @@
-# OpenShift: Distribuerad Gästbok med cache
+# 🚀 Cloud-Native Guestbook: Multi-Repo GitOps Pipeline
 
-I denna labb ska ni bygga och deploya en modern, cloud-native applikation på OpenShift. Applikationen är en gästbok som demonstrerar:
+A full-stack Guestbook application (Go & React) deployed to **OpenShift** using a modern **GitOps** architecture. This project demonstrates automated CI/CD patterns, container orchestration, and infrastructure-as-code principles.
 
-- Multi-tier arkitektur
-- Containerisering med multi-stage builds
-- Configuration management (ConfigMaps & Secrets)
-- Service discovery
-- Caching strategies
-- Persistent storage
-- External routing
+## 🏗️ The "Handshake" Workflow
 
-## Arkitektur
+This project utilizes a **separated repository strategy** to decouple application code from environment configuration.
+
+1. **Trigger:** A code push to the `backend/` or `frontend/` directories in the **App Repo** triggers the specific GitHub Action pipeline.
+2. **Build & Registry:** GitHub Actions logs into **Quay.io** (using stored Repository Secrets) to build and push an OCI-compliant image tagged with the unique Git SHA.
+3. **Manifest Update:** The pipeline clones the **Infra Repo** and uses `sed` to update the image tag in the deployment YAMLs. It then commits and pushes these changes back to the Infra Repo.
+4. **GitOps Sync:** **Argo CD** monitors the Infra Repo. When it detects the new image tag, it automatically synchronizes the OpenShift cluster state to match Git.
+5. **Deployment:** OpenShift pulls the new image from Quay.io using an `ImagePullSecret` and performs a rolling update of the pods.
+
+---
+## 🚀 How to Run the System
+
+### 1. Security & Configuration (Manual Bootstrap)
+
+To keep sensitive credentials secure, **Secrets** and **ConfigMaps** are stored locally and injected directly into the cluster.
+
+* **Inject Local Configuration:**
+```bash
+oc apply -f ./local-secrets.yaml
+oc apply -f ./local-configmaps.yaml
+
+```
+
+
+
+> **Note:** These files are git-ignored to ensure passwords and tokens are never exposed in the public repository.
+
+### 2. Deploy Infrastructure & Applications
+
+Once the secrets are in place, you can deploy the entire stack using the manifests in the Infra Repo:
+
+```bash
+oc apply -f k8s/
+
+```
+
+*This command applies all Deployments and Services (Postgres, Redis, Backend, and Frontend) simultaneously.*
+
+### 3. Expose the Application
+
+After the pods are running, create the external "door" to the frontend:
+
+```bash
+oc expose svc guestbook-frontend-service --name=guestbook-frontend
+
+```
+
+**Access the app at:** `oc get route guestbook-frontend`
+
+---
+
+## 🌐 Networking & Access
+
+In this architecture, the application is exposed to the internet via the **OpenShift Route** layer.
+
+### How the Route is Created
+
+While Deployments and Services are managed via YAML in the Infra Repo, the **Route** (the external URL) can be generated from the Service.
+
+* **Command:** `oc expose svc guestbook-frontend-service --name=guestbook-frontend`
+* **Logic:** This command creates a "door" from the outside world to the internal Service. The Route automatically maps to the Service's port (e.g., `8080`) and provides a DNS hostname for the application.
+
+> **Note:** If the Route is ever deleted (e.g., during a "Prune" sync in Argo CD), it can be recreated using the `oc expose` command above to restore public access.
+
+---
+
+## 🛠️ Tech Stack & Security
+
+* **Frontend/Backend:** React.js & Golang (Gin)
+* **Data:** PostgreSQL & Redis
+* **Registry:** Quay.io
+* **Orchestration:** Red Hat OpenShift
+* **CD Tool:** Argo CD
+* **Security:** ConfigMaps and Secrets are managed **manually** within the cluster namespace. This "Bootstrap" method ensures sensitive credentials (like DB passwords) are never stored in plain text in public repositories. For production environments, this would be upgraded to a solution like **HashiCorp Vault** or **Sealed Secrets**.
+
+---
+
+## Architecture
 
 ```txt
 Internet
@@ -21,135 +91,16 @@ Internet
                                                   ↓         ↓
                                             [Redis]   [PostgreSQL]
 ```
+---
+
+## 🚀 Future Improvements
+
+* Implement **Helm Charts** for better manifest management.
+* Add **Liveness and Readiness probes** to ensure zero-downtime deployments.
+* Integrate **SonarQube** for automated code quality gates in the CI pipeline.
 
 
-Den färdiga applikationen ser ut så här: [screencast.com](https://app.screencast.com/x8uWhUNAMZNQB)
-w
-## Container images
 
-- registry.access.redhat.com/ubi10/go-toolset:10.0
-- registry.access.redhat.com/ubi10-minimal:10.0
-- registry.access.redhat.com/ubi10/nginx-126:10.0
-- quay.io/kurs/redis:latest
-- quay.io/fedora/postgresql-16:latest
 
-## Backend
 
-För att bygga backend behöver ni kunna bygga Golang:
-
-```sh
-$ go mod tidy
-$ go build -o guestbook-api .
-```
-
-Backend är beroende av att PostgreSQL och Redis är igång och fungerar. För att backend-applikationen skall kunna köras behöver följande miljövariabler sättas. Värdena inom paranteserna är standardvärdena och kommer användas om du inte sätter miljövariablerna.
-
-PostgreSQL:
-
-- `DB_HOST` (localhost)
-- `DB_PORT` (5432)
-- `DB_USER` (guestbook)
-- `DB_PASSWORD` (password)
-- `DB_NAME` (guestbook)
-
-Redis:
-
-- `REDIS_HOST` (localhost)
-- `REDIS_PORT` (6379)
-- `REDIS_PASSWORD` ()
-
-Applikationen lyssnar på:
-
-- `PORT` (8080)
-
-API-endpoints:
-
-- `/health` GET
-- `/api/entries` GET
-- `/api/entries` POST
-- `/api/stats` GET
-
-### Testa backend
-
-För att se om backend fungerar som den skall kan du köra följande kommandon:
-
-- Testa om `/health` fungerar
-
-```sh
-$ curl localhost:8080/health
-```
-
-- Hämta alla inlägg
-
-```sh
-$ curl localhost:8080/api/entries
-```
-
-- Skapa ett nytt inlägg. `name` är namnet på den som skrivit inlägget och `message` är inlägget. I exemplet nedanför skriver Jonas meddelandet *Jonas testar API!*
-
-```sh
-$ curl -X POST localhost:8080/api/entries \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Jonas","message":"Jonas testar API!"}'
-```
-
-- Hämta statistik
-
-```sh
-$ curl localhost:8080/api/stats
-```
-
-## Frontend
-
-För att nginx på frontend skall kunna hitta backend måste vi ange att den skall använda 
-OpenShift-klustrets DNS för namnuppslag. Då räcker det med att vår service heter `backend` 
-och ligger i samma project som vi har frontend.
-
-```nginx file=nginx.conf
-
-    resolver dns-default.openshift-dns.svc.cluster.local valid=30s;
-    resolver_timeout 5s;
-
-    upstream backend {
-        server backend:8080;
-    }
-
-```
-
-Hela `nginx.conf`-filen finns här i repot.
-
-## PostgreSQL
-
-- `POSTGRESQL_USER`
-- `POSTGRESQL_PASSWORD`
-- `POSTGRESQL_DATABASE`
-- `/var/lib/pgsql/data` är katalogen där PostgreSQL sparar data.
-
-## Redis
-
-- Sätt `REDIS_PASSWORD` till det lösenord du vill använda. Utan detta kommer inte backend kunna 
-kommunicera med Redis!
-- `/var/lib/redis/data` är katalogen där Redis sparar sin data.
-
-## Checklist
-
-- [ ] Alla 6 pods körs (2x backend, 2x frontend, 1x postgres, 1x redis)
-- [ ] ConfigMaps och Secrets används korrekt
-- [ ] Backend kan ansluta till både PostgreSQL och Redis
-- [ ] Frontend kan kommunicera med backend via service
-- [ ] Route exponerar applikationen externt
-- [ ] Cache fungerar (verifiera X-Cache header med `curl -i`)
-- [ ] Health checks fungerar
-- [ ] Persistent storage används för PostgreSQL
-- [ ] Kan skapa och läsa inlägg via webbgränssnittet (frontend applikationen)
-
-## Reflektionsfrågor
-
-1. Varför använder vi multi-stage builds?
-2. Vad händer om Redis går ner? Funkar applikationen fortfarande?
-3. Hur skulle ni implementera high availability för PostgreSQL?
-4. Varför använder vi separate services för backend och frontend?
-5. Vad är skillnaden mellan ClusterIP, NodePort och LoadBalancer?
-6. Varför bör känsliga data ligga i Secrets istället för ConfigMaps?
-7. Hur kan vi implementera horizontal pod autoscaling?
 
